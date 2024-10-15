@@ -2,6 +2,7 @@ package com.videostore.store;
 
 import com.videostore.costumer.Costumer;
 import com.videostore.models.Film;
+import com.videostore.rent.Rent;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,19 +27,25 @@ public class Store {
     public static void main(String[] args) {
         try (Scanner scanner = new Scanner(System.in)) {
             int choice = 0;
+            
             System.out.println("\n--- Welcome to the Video Store ---");
             System.out.println("What is your name?");
+            
             String name = scanner.nextLine();
             Costumer costumer = new Costumer(name);
             Store store = new Store();
-
             
-            while (choice != 3) {
+            Locale brLocale = new Locale.Builder().setLanguage("pt").setRegion("BR").build();
+            NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(brLocale);
+
+            while (choice != 5) {
                 clearScreen();
                 System.out.println("\nHello, " + costumer.getName() + "!\n");
                 System.out.println("1. Rent a film");
                 System.out.println("2. View rented films");
-                System.out.println("3. Exit");
+                System.out.println("3. Insert credits");
+                System.out.println("4. Return rented film");
+                System.out.println("5. Exit");
                 System.out.print("\nEnter your choice: ");
                 choice = scanner.nextInt();
 
@@ -46,8 +53,6 @@ public class Store {
                 switch (choice) {
                     case 1 -> {
                         clearScreen();
-                        Locale brLocale = new Locale.Builder().setLanguage("pt").setRegion("BR").build();
-                        NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(brLocale);
                         ArrayList<Film> availableFilms = store.getAvailableFilms();
                         System.out.println("\n--- Rent a film ---");
                         for (int i = 0; i < availableFilms.size(); i++) {
@@ -62,17 +67,77 @@ public class Store {
                             break;
                         }
                         Film film = availableFilms.get(filmNumber - 1);
-                        costumer.rentFilm(film);
-                        film.setAvailable(film.getAvailable() - 1);
-                        System.out.println("\nCongrats! You have rented: " + film.getTitle());
+                        if (film.getPrice() <= costumer.getCredit()) {
+                            costumer.setCredit(costumer.getCredit() - film.getPrice());
+                            costumer.rentFilm(film);
+                            film.setAvailable(film.getAvailable() - 1);
+                            System.out.println("\nCongrats! You have rented: " + film.getTitle());
+                        } else {
+                            clearScreen();
+                            while (true) {
+                                System.out.print("You don't have enough credits to rent this film. Press 1 to return to the main menu: ");
+                                int back = scanner.nextInt();
+                                if (back == 1) {
+                                    break;
+                                }
+                            }
+                            System.out.println("You don't have enough credits to rent this film");
+                            break;
+                        }
                     }
                     case 2 -> {
                         clearScreen();
                         System.out.println("\n--- View rented films ---");
-                        for (int i = 0; i < costumer.getRents().size(); i++) {
-                            System.out.println(costumer.getRents().get(i).getRentInfo());
+                        for (int i = 0; i < costumer.getRents(false).size(); i++) {
+                            System.out.println(costumer.getRents(false).get(i).getRentInfo());
                         }
                         while (true) { 
+                            System.out.print("\nPress 1 to return to the main menu: ");
+                            int back = scanner.nextInt();
+                            if (back == 1) {
+                                break;
+                            }
+                        }
+                    }
+                    case 3 -> {
+                        clearScreen();
+                        System.out.println("\n--- Insert credits ---");
+                        System.out.print("Current credits: " + currencyFormat.format(costumer.getCredit()) + "\n");
+                        System.out.print("Enter the amount you want to insert: ");
+                        double credit = scanner.nextDouble();
+                        costumer.setCredit(costumer.getCredit() + credit);
+                    }
+                    case 4 -> {
+                        clearScreen();
+                        System.out.println("\n--- Return rented film ---");
+                        ArrayList<Rent> rents = costumer.getRents(true);
+                        if (rents.isEmpty()) {
+                            System.out.println("You don't have any rented films");
+                            while (true) { 
+                                System.out.print("\nPress 1 to return to the main menu: ");
+                                int back = scanner.nextInt();
+                                if (back == 1) {
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                        for (int i = 0; i < rents.size(); i++) {
+                            System.out.println((i + 1) + ". " + rents.get(i).getRentInfo());
+                        }
+                        System.out.print("\nEnter the number of the rent you want to return: ");
+                        int rentIndex = scanner.nextInt() - 1;
+                        if (rentIndex < 0 || rentIndex >= rents.size()) {
+                            System.out.println("Invalid film number");
+                            break;
+                        }
+                        Film film = rents.get(rentIndex).getFilm();
+                        
+                        costumer.returnRent(rents.get(rentIndex).getId());
+                        film.setAvailable(film.getAvailable() + 1);
+                        System.out.println("Film returned successfully");
+
+                        while (true) {
                             System.out.print("\nPress 1 to return to the main menu: ");
                             int back = scanner.nextInt();
                             if (back == 1) {
